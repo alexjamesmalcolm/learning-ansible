@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# Virtual Environment
+.venv
+venv
+
+# Environment Variables
+.env
+
+# Vagrant
+.vagrant
