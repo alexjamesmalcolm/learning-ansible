@@ -1,0 +1,39 @@
+---
+- name: Configure webserver with nginx
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Ensure nginx is installed
+      package:
+        name: nginx
+        state: present
+
+    - name: Copy nginx config file
+      copy:
+        src: nginx.conf # your server block file
+        dest: /etc/nginx/conf.d/default.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart nginx
+
+    - name: Copy index.html
+      template:
+        src: index.html.j2
+        dest: /usr/share/nginx/html/index.html
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart nginx
+
+    - name: Ensure nginx is enabled and running
+      service:
+        name: nginx
+        state: started
+        enabled: true
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
