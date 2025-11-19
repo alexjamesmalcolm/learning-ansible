@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
     d.build_dir = "."              # folder with Dockerfile.rocky (rename to Dockerfile or set build args)
     d.name = "testserver"
     d.has_ssh = true
-    d.ports = ["2222:22", "7080:80"]
+    d.ports = ["2222:22", "7080:80", "8443:443"]
 
     # Let systemd be PID 1 and manage cgroups
     d.create_args = [

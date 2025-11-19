@@ -1,0 +1,70 @@
+#!/usr/bin/env ansible-playbook
+# This playbook is executable as a script.
+---
+- name: Configure webserver with Nginx and TLS
+  hosts: webservers
+  become: true
+
+  vars:
+    tls_dir: /etc/nginx/ssl/
+    key_file: nginx.key
+    cert_file: nginx.crt
+    conf_file: /etc/nginx/conf.d/default.conf
+    server_name: localhost
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Ensure nginx is installed
+      package:
+        name: nginx
+        state: present
+
+    - name: Create directories for TLS certificates
+      file:
+        path: "{{ tls_dir }}"
+        state: directory
+        mode: '0750'
+      notify: restart nginx
+
+    - name: Copy TLS files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ tls_dir }}"
+        mode: '0600'
+      loop:
+        - "{{ key_file }}"
+        - "{{ cert_file }}"
+      notify: restart nginx
+
+    - name: Manage nginx config template
+      template:
+        src: nginx.conf.j2
+        dest: "{{ conf_file }}"
+        mode: '0644'
+      notify: restart nginx
+
+    - name: Install home page
+      template:
+        src: index.html.j2
+        dest: /usr/share/nginx/html/index.html
+        mode: '0644'
+
+    - name: Restart nginx
+      meta: flush_handlers
+
+    - name: "Test it! https://localhost:8443/index.html"
+      delegate_to: localhost
+      become: false
+      uri:
+        url: 'https://localhost:8443/index.html'
+        validate_certs: false
+        return_content: true
+      register: this
+      failed_when: "'Running on ' not in this.content"
+      tags:
+        - test
