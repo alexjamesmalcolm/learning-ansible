@@ -10,3 +10,6 @@ venv
 
 # Vagrant
 .vagrant
+
+# Ansible
+.ansible
