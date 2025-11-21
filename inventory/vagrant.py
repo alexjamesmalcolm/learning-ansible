@@ -3,7 +3,7 @@
 Adapted from Mark Mandel's implementation
 https://github.com/markmandel/vagrant_ansible_example
 """
-from typing import List
+from typing import Dict
 import argparse
 import io
 import json
@@ -22,26 +22,22 @@ def parse_args():
     return parser.parse_args()
 
 
-def list_running_hosts():
+def list_running_hosts() -> Dict[str, Dict[str, str]]:
     """vagrant.py --list function"""
-    cmd = ["vagrant", "status", "--machine-readable"]
-    status = subprocess.check_output(cmd).rstrip().decode()
-    hosts: List[str] = []
-    for line in status.splitlines():
-        (_, host, key, value) = line.split(",")[:4]
-        if key == "state" and value == "running":
-            hosts.append(host)
-    return hosts
-
-
-def get_host_details(host: str):
-    """vagrant.py --host <hostname> function"""
-    cmd = ["vagrant", "ssh-config", host]
-    ssh_config = subprocess.check_output(cmd).decode()
+    cmd = ["vagrant", "ssh-config"]
+    ssh_configs = subprocess.check_output(cmd).decode()
     config = paramiko.SSHConfig()
-    config.parse(io.StringIO(ssh_config))
-    host_config = config.lookup(host)
+    config.parse(io.StringIO(ssh_configs))
+    results: Dict[str, Dict[str, str]] = {}
+    for host in config.get_hostnames():
+        if host != "*":
+            host_config = config.lookup(host)
+            results[host] = process_host_config(host_config)
 
+    return results
+
+
+def process_host_config(host_config: paramiko.SSHConfigDict) -> Dict[str, str]:
     result = {
         "ansible_host": host_config["hostname"],
         "ansible_port": host_config["port"],
@@ -54,15 +50,25 @@ def get_host_details(host: str):
     return result
 
 
+def get_host_details(host: str) -> Dict[str, str]:
+    """vagrant.py --host <hostname> function"""
+    cmd = ["vagrant", "ssh-config", host]
+    ssh_config = subprocess.check_output(cmd).decode()
+    config = paramiko.SSHConfig()
+    config.parse(io.StringIO(ssh_config))
+    host_config = config.lookup(host)
+    return process_host_config(host_config)
+
+
 def main():
     """Example 4-12 of Ansible Up & Running"""
     args = parse_args()
     if args.list:
-        hosts = list_running_hosts()
+        host_details = list_running_hosts()
         json.dump(
             {
-                "vagrant": {"hosts": hosts, "vars": {}, "children": []},
-                "_meta": {"hostvars": {host: get_host_details(host) for host in hosts}},
+                "vagrant": {"hosts": list(host_details), "vars": {}, "children": []},
+                "_meta": {"hostvars": host_details},
             },
             sys.stdout,
         )
