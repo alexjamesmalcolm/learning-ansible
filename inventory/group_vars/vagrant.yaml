@@ -1,0 +1,10 @@
+db:
+  user: widgetuser
+  password: password
+  name: widget_vagrant
+  primary:
+    host: vagrant3
+    port: 5432
+rabbitmq:
+  host: vagrant3
+  port: 5672
